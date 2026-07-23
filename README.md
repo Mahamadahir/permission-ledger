@@ -62,6 +62,63 @@ Both the extension and the dashboard talk to the Rust backend, which is the only
 
 The policy check worker added in Release 2 is a separate scheduled component, not part of the request-serving API. It reads due policies from the database, fetches and diffs them, and writes back snapshots, changes and alerts. It's kept separate so the API can scale to zero when idle without the scheduled checks going dark.
 
+## Repository structure
+
+The repository is scaffolded around the main deployable components described above:
+
+```text
+permission-ledger/
+├── README.md
+├── ROADMAP.md
+├── DOMAIN_MODEL.md
+├── Cargo.toml
+├── docker-compose.yml
+├── .env.example
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── backend/
+│   ├── Cargo.toml
+│   ├── migrations/
+│   └── src/
+│       ├── main.rs
+│       ├── config.rs
+│       ├── db.rs
+│       ├── auth/
+│       ├── records/
+│       ├── services/
+│       ├── extension/
+│       ├── audit/
+│       └── exports/
+├── web/
+│   ├── package.json
+│   ├── svelte.config.js
+│   ├── src/
+│   └── static/
+├── extension/
+│   ├── package.json
+│   ├── manifest.json
+│   ├── src/
+│   │   ├── background/
+│   │   ├── content/
+│   │   ├── popup/
+│   │   └── shared/
+│   └── public/
+├── worker/
+│   ├── Cargo.toml
+│   └── src/
+│       └── main.rs
+├── crates/
+│   └── shared/
+│       ├── Cargo.toml
+│       └── src/
+│           └── lib.rs
+└── docs/
+    ├── api.md
+    ├── deployment.md
+    └── security.md
+```
+
 ## Running locally
 
 This section will be filled in once Phase 1 of the roadmap is done and there's a working Docker Compose setup to document. For now, see [ROADMAP.md](./ROADMAP.md) for what Phase 1 covers. Local development runs entirely through Docker Compose; production is intended to run on Azure once Release 1 is deployable, though the Docker and GitHub Actions setup keeps that target open.
