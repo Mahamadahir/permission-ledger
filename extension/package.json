@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --host 0.0.0.0",
-    "build": "vite build && cp manifest.json dist/manifest.json"
+    "build": "vite build && cp manifest.json dist/manifest.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "@vitejs/plugin-legacy": "^5.4.0",
@@ -13,6 +14,7 @@
     "typescript": "^5.8.0"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.268"
+    "@types/chrome": "^0.0.268",
+    "vitest": "^2.1.0"
   }
 }

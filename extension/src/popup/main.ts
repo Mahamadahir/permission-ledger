@@ -1,4 +1,5 @@
 import { fetchCategories, getSettings, saveRecord, saveSettings, type Category } from '../shared/api';
+import { hostFromUrl, nextMonth } from '../shared/url';
 import './style.css';
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -107,18 +108,4 @@ function getElement<T extends HTMLElement>(id: string): T {
 
 function setStatus(message: string) {
   status.textContent = message;
-}
-
-function hostFromUrl(value: string) {
-  try {
-    return new URL(value).hostname.replace(/^www\./, '');
-  } catch {
-    return '';
-  }
-}
-
-function nextMonth() {
-  const date = new Date();
-  date.setMonth(date.getMonth() + 1);
-  return date.toISOString().slice(0, 10);
 }

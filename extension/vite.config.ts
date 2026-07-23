@@ -1,7 +1,12 @@
+/// <reference types="vitest/config" />
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts']
+  },
   build: {
     emptyOutDir: true,
     rollupOptions: {
