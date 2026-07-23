@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { buildRecordQuery, formatDate, serviceInitial } from '$lib/records';
+
   const apiBase = import.meta.env.VITE_API_BASE ?? 'http://localhost:3000';
 
   type User = { id: string; email: string; display_name: string | null };
@@ -119,16 +121,10 @@
   }
 
   async function loadData() {
-    const params = new URLSearchParams();
-    if (search) params.set('q', search);
-    if (categoryFilter) params.set('category_id', categoryFilter);
-    if (statusFilter) params.set('status', statusFilter);
-    if (riskFilter) params.set('risk_level', riskFilter);
-    if (sourceFilter) params.set('source', sourceFilter);
-    if (reviewDueOnly) params.set('review_due', 'true');
+    const query = buildRecordQuery({ search, categoryFilter, statusFilter, riskFilter, sourceFilter, reviewDueOnly });
     [categories, records, dashboard, devices] = await Promise.all([
       api('/api/categories'),
-      api(`/api/records?${params.toString()}`),
+      api(`/api/records?${query}`),
       api('/api/dashboard'),
       api('/api/extension/devices')
     ]);
@@ -203,15 +199,6 @@
     sourceFilter = '';
     reviewDueOnly = false;
     loadData();
-  }
-
-  function formatDate(value: string | null) {
-    if (!value) return 'Not set';
-    return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(value));
-  }
-
-  function serviceInitial(value: string) {
-    return value.trim().slice(0, 1).toUpperCase() || 'P';
   }
 
   loadSession();
