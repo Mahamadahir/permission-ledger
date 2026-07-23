@@ -76,10 +76,10 @@ async fn service_name_is_shared_across_users_known_bleed() {
     );
 }
 
-/// Documents that CSV export does not neutralise spreadsheet formula prefixes.
-/// A note beginning with `=` is emitted verbatim (a formula-injection risk).
+/// A note beginning with a formula character is neutralised with a leading
+/// single quote so spreadsheets read it as text (CSV injection guard).
 #[tokio::test]
-async fn csv_does_not_neutralise_formula_injection_known_issue() {
+async fn csv_neutralises_formula_injection() {
     let ctx = common::setup().await;
     let server = ctx.client();
     let auth = common::register(&server, "inj@example.com", "correcthorse1").await;
@@ -93,9 +93,10 @@ async fn csv_does_not_neutralise_formula_injection_known_issue() {
         .await
         .text();
     assert!(
-        text.contains(",=1+1,") || text.contains(",=1+1\n"),
-        "known issue: formula prefix emitted verbatim, not escaped"
+        text.contains(",'=1+1,"),
+        "formula prefix must be quoted as text"
     );
+    assert!(!text.contains(",=1+1,"), "raw formula must not appear");
 }
 
 /// Documents that the search term is not escaped for LIKE wildcards, so `%`

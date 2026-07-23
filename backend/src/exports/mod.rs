@@ -125,6 +125,13 @@ async fn export_records(
 }
 
 fn csv_escape(value: String) -> String {
+    // Spreadsheets treat a leading =, +, -, @, tab or CR as a formula. Prefix
+    // with a single quote so the cell is read as text (CSV injection guard).
+    let value = match value.chars().next() {
+        Some('=' | '+' | '-' | '@' | '\t' | '\r') => format!("'{value}"),
+        _ => value,
+    };
+
     if value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r') {
         format!("\"{}\"", value.replace('"', "\"\""))
     } else {
