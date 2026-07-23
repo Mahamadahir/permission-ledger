@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: permission_ledger
+          POSTGRES_USER: permission_ledger
+          POSTGRES_PASSWORD: permission_ledger
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U permission_ledger -d permission_ledger"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://permission_ledger:permission_ledger@localhost:5432/permission_ledger
+      BACKEND_BIND_ADDR: 127.0.0.1:3000
+      WEB_ORIGIN: http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Validate migrations
+        run: cargo install sqlx-cli --no-default-features --features rustls,postgres && sqlx migrate run --source backend/migrations
+      - name: Cargo check
+        run: cargo check --workspace
+      - name: Cargo test
+        run: cargo test --workspace
+
+  web-and-extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Web check
+        working-directory: web
+        run: npm install && npm run check && npm run build
+      - name: Extension build
+        working-directory: extension
+        run: npm install && npm run build
