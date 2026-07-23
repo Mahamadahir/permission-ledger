@@ -16,9 +16,11 @@ From the dashboard I can search, filter, review, update, revoke and export every
 
 ## Project status
 
-PermissionLedger is in planning. Nothing is built yet. The build plan, including what ships in each release, lives in [ROADMAP.md](./ROADMAP.md). The database schema and entity relationships live in [DOMAIN_MODEL.md](./DOMAIN_MODEL.md).
+The Release 1 slice is built and runs locally through Docker Compose. The Rust backend covers authentication, consent records, extension pairing, exports and audit logging. The SvelteKit dashboard covers login, record management, search and filtering, extension devices and exports. The Chrome extension captures consent decisions from the current page. Automated test coverage is still thin and the dashboard is a single page rather than split routes, so this is an early working version rather than a finished release.
 
-Release 1 covers consent and permission tracking: accounts, records, the dashboard, the browser extension and audit logging. Release 2 adds privacy policy monitoring, AI-assisted change ranking, SSO and email alerts. Release 3 is a stretch goal that explores helping users act on a service directly, things like consent withdrawal and account deletion requests.
+Release 2 (privacy policy monitoring, AI-assisted change ranking, SSO and email alerts) and Release 3 (service relationship actions) are not started. The `worker/` and `crates/shared/` crates are scaffolded for the Release 2 monitoring pipeline but empty.
+
+The build plan, including what ships in each release, lives in [ROADMAP.md](./ROADMAP.md). The database schema and entity relationships live in [DOMAIN_MODEL.md](./DOMAIN_MODEL.md).
 
 ## Tech stack
 
@@ -121,7 +123,18 @@ permission-ledger/
 
 ## Running locally
 
-This section will be filled in once Phase 1 of the roadmap is done and there's a working Docker Compose setup to document. For now, see [ROADMAP.md](./ROADMAP.md) for what Phase 1 covers. Local development runs entirely through Docker Compose; production is intended to run on Azure once Release 1 is deployable, though the Docker and GitHub Actions setup keeps that target open.
+Everything runs through Docker Compose:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+The backend listens on `http://localhost:3000` and applies SQLx migrations at startup. The dashboard runs on `http://localhost:5173`. Build the Chrome extension bundle with `docker compose --profile tools run --rm extension-build`, then load `extension/dist` as an unpacked extension in Chrome.
+
+Configuration comes from environment variables, documented in `.env.example`: `DATABASE_URL`, `BACKEND_BIND_ADDR`, `WEB_ORIGIN`, `COOKIE_SECURE` and `VITE_API_BASE`. The API surface is documented in [docs/api.md](./docs/api.md), deployment in [docs/deployment.md](./docs/deployment.md) and the security model in [docs/security.md](./docs/security.md).
+
+Production is intended to run on Azure once Release 1 is deployable, though the Docker and GitHub Actions setup keeps that target open.
 
 ## Security
 
