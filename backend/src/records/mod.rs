@@ -166,13 +166,9 @@ async fn update_record(
     let user = auth::require_csrf(&state.pool, &headers).await?;
     ensure_record_owner(&state.pool, user.id, id).await?;
     let normalized = normalize_service(&payload.website_url)?;
-    let service_id = upsert_service(
-        &state.pool,
-        &payload.service_name,
-        &payload.website_url,
-        &normalized,
-    )
-    .await?;
+    let service_name = clean_required(&payload.service_name, "service name", 160)?;
+    let website_url = clean_required(&payload.website_url, "website URL", 500)?;
+    let service_id = upsert_service(&state.pool, &normalized).await?;
     validate_category(&state.pool, payload.category_id).await?;
     let status = validate_status(payload.status.as_deref().unwrap_or("active"))?;
     let risk_level = validate_risk(&payload.risk_level)?;
@@ -180,13 +176,15 @@ async fn update_record(
     sqlx::query(
         r#"
         UPDATE consent_records
-        SET service_id = $1, category_id = $2, consent_type = $3, date_given = $4,
-            review_date = $5, expiry_date = $6, status = $7, risk_level = $8,
-            notes = $9, updated_at = now()
-        WHERE id = $10 AND user_id = $11
+        SET service_id = $1, service_name = $2, website_url = $3, category_id = $4,
+            consent_type = $5, date_given = $6, review_date = $7, expiry_date = $8,
+            status = $9, risk_level = $10, notes = $11, updated_at = now()
+        WHERE id = $12 AND user_id = $13
         "#,
     )
     .bind(service_id)
+    .bind(service_name)
+    .bind(website_url)
     .bind(payload.category_id)
     .bind(clean_required(&payload.consent_type, "consent type", 160)?)
     .bind(payload.date_given)
@@ -320,12 +318,11 @@ async fn dashboard(
     .await?;
     let services = sqlx::query_as::<_, NamedCount>(
         r#"
-        SELECT services.name, count(*) AS count
+        SELECT consent_records.service_name AS name, count(*) AS count
         FROM consent_records
-        JOIN services ON services.id = consent_records.service_id
         WHERE consent_records.user_id = $1
-        GROUP BY services.name
-        ORDER BY count DESC, services.name
+        GROUP BY consent_records.service_name
+        ORDER BY count DESC, consent_records.service_name
         LIMIT 8
         "#,
     )
@@ -347,13 +344,9 @@ pub async fn create_record_for_user(
     source: &str,
 ) -> ApiResult<RecordResponse> {
     let normalized = normalize_service(&payload.website_url)?;
-    let service_id = upsert_service(
-        pool,
-        &payload.service_name,
-        &payload.website_url,
-        &normalized,
-    )
-    .await?;
+    let service_name = clean_required(&payload.service_name, "service name", 160)?;
+    let website_url = clean_required(&payload.website_url, "website URL", 500)?;
+    let service_id = upsert_service(pool, &normalized).await?;
     validate_category(pool, payload.category_id).await?;
     let status = validate_status(payload.status.as_deref().unwrap_or("active"))?;
     let risk_level = validate_risk(&payload.risk_level)?;
@@ -362,15 +355,17 @@ pub async fn create_record_for_user(
     let id = sqlx::query_scalar::<_, Uuid>(
         r#"
         INSERT INTO consent_records (
-            user_id, service_id, category_id, consent_type, date_given, review_date,
-            expiry_date, status, risk_level, source, notes
+            user_id, service_id, service_name, website_url, category_id, consent_type,
+            date_given, review_date, expiry_date, status, risk_level, source, notes
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING id
         "#,
     )
     .bind(user_id)
     .bind(service_id)
+    .bind(service_name)
+    .bind(website_url)
     .bind(payload.category_id)
     .bind(clean_required(&payload.consent_type, "consent type", 160)?)
     .bind(payload.date_given)
@@ -402,9 +397,9 @@ pub async fn fetch_records(
     if let Some(q) = clean_optional(filters.q, 200) {
         let pattern = format!("%{}%", q.to_lowercase());
         query
-            .push(" AND (lower(services.name) LIKE ")
+            .push(" AND (lower(consent_records.service_name) LIKE ")
             .push_bind(pattern.clone())
-            .push(" OR lower(services.website_url) LIKE ")
+            .push(" OR lower(consent_records.website_url) LIKE ")
             .push_bind(pattern.clone())
             .push(" OR lower(consent_records.consent_type) LIKE ")
             .push_bind(pattern)
@@ -496,28 +491,20 @@ async fn validate_category(pool: &PgPool, category_id: Uuid) -> ApiResult<()> {
     }
 }
 
-async fn upsert_service(
-    pool: &PgPool,
-    service_name: &str,
-    website_url: &str,
-    normalized_domain: &str,
-) -> ApiResult<Uuid> {
-    let service_name = clean_required(service_name, "service name", 160)?;
-    let website_url = clean_required(website_url, "website URL", 500)?;
+/// Ensure the shared service row for a domain exists and return its id. The
+/// touch of updated_at lets the statement return the id on conflict without
+/// overwriting any user-facing data.
+async fn upsert_service(pool: &PgPool, normalized_domain: &str) -> ApiResult<Uuid> {
     Ok(sqlx::query_scalar::<_, Uuid>(
         r#"
-        INSERT INTO services (normalized_domain, name, website_url)
-        VALUES ($1, $2, $3)
+        INSERT INTO services (normalized_domain)
+        VALUES ($1)
         ON CONFLICT (normalized_domain) DO UPDATE
-        SET name = EXCLUDED.name,
-            website_url = EXCLUDED.website_url,
-            updated_at = now()
+        SET updated_at = now()
         RETURNING id
         "#,
     )
     .bind(normalized_domain)
-    .bind(service_name)
-    .bind(website_url)
     .fetch_one(pool)
     .await?)
 }
@@ -527,9 +514,9 @@ fn record_select_sql() -> &'static str {
     SELECT
         consent_records.id,
         services.id AS service_id,
-        services.name AS service_name,
+        consent_records.service_name,
         services.normalized_domain,
-        services.website_url,
+        consent_records.website_url,
         consent_records.category_id,
         consent_categories.name AS category_name,
         consent_records.consent_type,

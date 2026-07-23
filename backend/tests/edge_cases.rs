@@ -36,12 +36,11 @@ async fn www_normalisation_is_case_insensitive() {
     );
 }
 
-/// Services are global and keyed by domain. Documents that a second user
-/// creating a record for the same domain overwrites the service name the first
-/// user sees. This is a known cross-user data-bleed, pinned here so a future fix
-/// (e.g. per-user service names) deliberately changes it.
+/// The service name lives on each user's record, so a second user recording a
+/// consent for the same domain must not change the name the first user sees.
+/// Both records still share one underlying service row (domain dedup).
 #[tokio::test]
-async fn service_name_is_shared_across_users_known_bleed() {
+async fn service_name_is_isolated_per_user() {
     let ctx = common::setup().await;
     let server = ctx.client();
     let alice = common::register(&server, "a-bleed@example.com", "correcthorse1").await;
@@ -71,9 +70,18 @@ async fn service_name_is_shared_across_users_known_bleed() {
     .await;
     assert_eq!(
         refetched.json::<serde_json::Value>()["service_name"],
-        "Bob Name",
-        "known issue: Bob's write overwrote the service name Alice sees"
+        "Alice Name",
+        "Bob's write must not change the name Alice sees"
     );
+
+    // The domain still dedups to a single shared service row.
+    let services: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM services WHERE normalized_domain = 'shared.example'",
+    )
+    .fetch_one(&ctx.pool)
+    .await
+    .unwrap();
+    assert_eq!(services, 1);
 }
 
 /// A note beginning with a formula character is neutralised with a leading

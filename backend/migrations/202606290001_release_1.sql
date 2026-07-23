@@ -35,11 +35,13 @@ CREATE TABLE login_rate_limits (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- A service is a shared identity anchor keyed by domain, tracked once across
+-- all users (Release 2 policy monitoring checks each service once). The
+-- user-facing name and URL live on the consent record, not here, so one user
+-- cannot overwrite the label another user sees.
 CREATE TABLE services (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     normalized_domain text NOT NULL UNIQUE,
-    name text NOT NULL,
-    website_url text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -56,6 +58,8 @@ CREATE TABLE consent_records (
     user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     service_id uuid NOT NULL REFERENCES services(id) ON DELETE RESTRICT,
     category_id uuid NOT NULL REFERENCES consent_categories(id) ON DELETE RESTRICT,
+    service_name text NOT NULL,
+    website_url text NOT NULL,
     consent_type text NOT NULL,
     date_given date NOT NULL,
     review_date date,
