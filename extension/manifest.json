@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "PermissionLedger",
+  "version": "0.1.0",
+  "description": "Capture consent and permission decisions while browsing.",
+  "permissions": ["activeTab", "storage", "tabs"],
+  "host_permissions": ["http://localhost:3000/*", "https://*/*", "http://*/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Save consent decision"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}
