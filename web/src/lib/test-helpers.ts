@@ -1,4 +1,5 @@
 import { vi, type Mock } from 'vitest';
+import { clearSession, setSession } from './session';
 
 export type MockResponse = { status?: number; body?: unknown };
 export type Responder = MockResponse | (() => MockResponse);
@@ -77,6 +78,15 @@ export function bodyOf(fetchMock: Mock, key: string): Record<string, unknown> | 
   if (!call) return undefined;
   const raw = (call[1] ?? {}).body;
   return typeof raw === 'string' ? JSON.parse(raw) : undefined;
+}
+
+/** Seed an authenticated session so page components render signed in. */
+export function signIn() {
+  setSession(fixtures.user, 'csrf1');
+}
+
+export function signOut() {
+  clearSession();
 }
 
 /** The most recent request URL (with query string) matching a path. */
