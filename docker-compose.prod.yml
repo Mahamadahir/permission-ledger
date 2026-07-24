@@ -1,0 +1,44 @@
+# The production topology, runnable locally so it can be verified before
+# deploying: only the web container is exposed, and it proxies /api to the
+# backend so the app and API share one origin.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: permission_ledger
+      POSTGRES_USER: permission_ledger
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-permission_ledger}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U permission_ledger -d permission_ledger"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgres://permission_ledger:${POSTGRES_PASSWORD:-permission_ledger}@postgres:5432/permission_ledger
+      BACKEND_BIND_ADDR: 0.0.0.0:3000
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      # Set to true wherever the site is served over HTTPS.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      RUST_LOG: permission_ledger_backend=info,tower_http=warn
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_prod_data:

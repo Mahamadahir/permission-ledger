@@ -34,9 +34,10 @@ services:
   web:
     build:
       context: .
-      dockerfile: web/Dockerfile
+      dockerfile: web/Dockerfile.dev
     environment:
-      VITE_API_BASE: http://localhost:3000
+      # Same-origin in development too: the Vite dev server proxies /api.
+      API_PROXY_TARGET: http://backend:3000
     ports:
       - "5173:5173"
     depends_on:

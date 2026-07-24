@@ -1,6 +1,13 @@
-FROM node:22-alpine
+# Production image: build the SPA, then serve it from nginx with /api proxied
+# to the backend so the app and API share one origin.
+FROM node:22-alpine AS build
 WORKDIR /app
 COPY web/package*.json ./
-RUN npm install
+RUN npm ci
 COPY web ./
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+RUN npm run build
+
+FROM nginx:alpine
+COPY web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/build /usr/share/nginx/html
+EXPOSE 80
