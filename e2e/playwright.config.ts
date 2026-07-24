@@ -6,6 +6,8 @@ import { defineConfig, devices } from '@playwright/test';
 // cookie/CSRF flow gets exercised.
 export default defineConfig({
   testDir: '.',
+  // Screenshots are generated on demand via playwright.screenshots.config.ts.
+  testIgnore: ['**/screenshots.spec.ts'],
   timeout: 45_000,
   // The dev server compiles each route chunk on first visit, so the first
   // navigation to a page can be slow even though the app is healthy.
