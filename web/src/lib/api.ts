@@ -1,6 +1,9 @@
 import { clearSession, csrfToken, setSession } from './session';
 
-export const apiBase = import.meta.env.VITE_API_BASE ?? 'http://localhost:3000';
+// Empty by default: the app and the API are served from one origin (nginx in
+// production, the Vite dev proxy locally), so requests are relative and the
+// session cookie stays first-party. Override only to point at another host.
+export const apiBase = import.meta.env.VITE_API_BASE ?? '';
 
 const MUTATING = ['POST', 'PUT', 'DELETE'];
 

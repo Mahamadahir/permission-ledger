@@ -15,14 +15,9 @@ describe('exports page', () => {
     signIn();
     render(Page);
 
-    expect(screen.getByRole('link', { name: 'Export CSV' })).toHaveAttribute(
-      'href',
-      'http://localhost:3000/api/export.csv'
-    );
-    expect(screen.getByRole('link', { name: 'Export JSON' })).toHaveAttribute(
-      'href',
-      'http://localhost:3000/api/export.json'
-    );
+    // Same-origin, so the export links are relative paths.
+    expect(screen.getByRole('link', { name: 'Export CSV' })).toHaveAttribute('href', '/api/export.csv');
+    expect(screen.getByRole('link', { name: 'Export JSON' })).toHaveAttribute('href', '/api/export.json');
   });
 
   it('documents the CSV columns', () => {

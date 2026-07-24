@@ -124,7 +124,9 @@ test('CSV export responds with the header row', async ({ page }) => {
   await register(page, uniqueEmail());
   await goTo(page, 'Exports');
 
-  const response = await page.request.get('http://localhost:3000/api/export.csv');
+  // Relative to baseURL, so this works against the dev proxy and the
+  // production nginx stack alike.
+  const response = await page.request.get('/api/export.csv');
   expect(response.status()).toBe(200);
   expect(await response.text()).toContain('id,service_name,website_url,category');
 });

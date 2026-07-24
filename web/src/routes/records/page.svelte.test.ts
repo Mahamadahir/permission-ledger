@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Page from './+page.svelte';
-import { bodyOf, fixtures, lastUrl, mockApi, signIn, signOut, type Routes } from '$lib/test-helpers';
+import { bodyOf, fixtures, lastUrl, mockApi, requestLog, signIn, signOut, type Routes } from '$lib/test-helpers';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -117,9 +117,7 @@ describe('record modal and CRUD', () => {
     await fireEvent.click(await screen.findByTitle('Revoke'));
     await fireEvent.click(screen.getByTitle('Delete'));
 
-    const calls = fetchMock.mock.calls.map(
-      ([url, opt = {}]) => `${(opt.method ?? 'GET').toUpperCase()} ${new URL(url).pathname}`
-    );
+    const calls = requestLog(fetchMock);
     expect(calls).toContain('POST /api/records/r1/revoke');
     expect(calls).toContain('DELETE /api/records/r1');
   });

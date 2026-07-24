@@ -47,6 +47,12 @@ const defaults: Routes = {
   'GET /api/extension/devices': { body: [] }
 };
 
+// Requests are relative now that the app and API share an origin, so a base
+// is needed to parse them.
+function pathOf(input: string): string {
+  return new URL(input, 'http://localhost').pathname;
+}
+
 /**
  * Install a routing fetch mock. Routes are keyed "METHOD /path" (query string
  * ignored for matching); unlisted routes fall back to sensible defaults.
@@ -55,7 +61,7 @@ export function mockApi(routes: Routes = {}): Mock {
   const table = { ...defaults, ...routes };
   const fetchMock = vi.fn(async (input: string, options: RequestInit = {}) => {
     const method = (options.method ?? 'GET').toUpperCase();
-    const path = new URL(input).pathname;
+    const path = pathOf(input);
     const responder = table[`${method} ${path}`];
     const { status = 200, body = null } = typeof responder === 'function' ? responder() : (responder ?? {});
     return {
@@ -74,7 +80,7 @@ export function bodyOf(fetchMock: Mock, key: string): Record<string, unknown> | 
   const [method, path] = key.split(' ');
   const call = [...fetchMock.mock.calls]
     .reverse()
-    .find(([input, options = {}]) => (options.method ?? 'GET').toUpperCase() === method && new URL(input).pathname === path);
+    .find(([input, options = {}]) => (options.method ?? 'GET').toUpperCase() === method && pathOf(input) === path);
   if (!call) return undefined;
   const raw = (call[1] ?? {}).body;
   return typeof raw === 'string' ? JSON.parse(raw) : undefined;
@@ -89,8 +95,15 @@ export function signOut() {
   clearSession();
 }
 
+/** Every request made, as "METHOD /path" strings, in call order. */
+export function requestLog(fetchMock: Mock): string[] {
+  return fetchMock.mock.calls.map(
+    ([input, options = {}]) => `${(options.method ?? 'GET').toUpperCase()} ${pathOf(input)}`
+  );
+}
+
 /** The most recent request URL (with query string) matching a path. */
 export function lastUrl(fetchMock: Mock, path: string): string | undefined {
-  const call = [...fetchMock.mock.calls].reverse().find(([input]) => new URL(input).pathname === path);
+  const call = [...fetchMock.mock.calls].reverse().find(([input]) => pathOf(input) === path);
   return call?.[0];
 }

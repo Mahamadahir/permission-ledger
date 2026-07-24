@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Page from './+page.svelte';
-import { fixtures, mockApi, signIn, signOut } from '$lib/test-helpers';
+import { fixtures, mockApi, requestLog, signIn, signOut } from '$lib/test-helpers';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -41,10 +41,7 @@ describe('extension page', () => {
     render(Page);
 
     await fireEvent.click(await screen.findByRole('button', { name: 'Revoke' }));
-    const calls = fetchMock.mock.calls.map(
-      ([url, opt = {}]) => `${(opt.method ?? 'GET').toUpperCase()} ${new URL(url).pathname}`
-    );
-    expect(calls).toContain('DELETE /api/extension/devices/d1');
+    expect(requestLog(fetchMock)).toContain('DELETE /api/extension/devices/d1');
   });
 
   it('shows an empty message with no devices', async () => {
