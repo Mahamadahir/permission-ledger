@@ -86,7 +86,8 @@ permission-ledger/
 ├── .env.prod.example
 ├── .github/
 │   └── workflows/
-│       └── ci.yml
+│       ├── ci.yml
+│       └── release.yml
 ├── backend/
 │   ├── Cargo.toml
 │   ├── migrations/
@@ -103,7 +104,7 @@ permission-ledger/
 ├── web/
 │   ├── package.json
 │   ├── svelte.config.js
-│   ├── nginx.conf
+│   ├── nginx.conf.template
 │   ├── src/
 │   └── static/
 ├── extension/
@@ -128,6 +129,8 @@ permission-ledger/
 │   └── dashboard.spec.ts
 ├── scripts/
 │   └── seed.mjs
+├── deploy/
+│   └── main.bicep
 └── docs/
     ├── api.md
     ├── deployment.md
