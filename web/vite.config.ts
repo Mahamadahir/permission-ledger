@@ -1,11 +1,14 @@
 /// <reference types="vitest/config" />
+import { svelteTesting } from '@testing-library/svelte/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [sveltekit()],
+  plugins: [sveltekit(), svelteTesting()],
   test: {
-    environment: 'node',
-    include: ['src/**/*.test.ts']
+    include: ['src/**/*.test.ts'],
+    setupFiles: ['./src/test-setup.ts'],
+    environmentMatchGlobs: [['src/**/*.svelte.test.ts', 'jsdom']],
+    environment: 'node'
   }
 });
