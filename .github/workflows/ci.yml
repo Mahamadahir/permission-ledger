@@ -7,7 +7,50 @@ on:
       - main
 
 jobs:
+  # Work out which parts of the repo changed so the lanes below only run when
+  # they are relevant. A docs-only change runs nothing; a workflow change runs
+  # everything.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      web: ${{ steps.filter.outputs.web }}
+      extension: ${{ steps.filter.outputs.extension }}
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ci: &ci
+              - '.github/workflows/**'
+            backend:
+              - *ci
+              - 'backend/**'
+              - 'crates/**'
+              - 'worker/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            web:
+              - *ci
+              - 'web/**'
+            extension:
+              - *ci
+              - 'extension/**'
+            e2e:
+              - *ci
+              - 'backend/**'
+              - 'crates/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'web/**'
+              - 'e2e/**'
+              - 'docker-compose.yml'
+
   backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -39,21 +82,35 @@ jobs:
       - name: Cargo test
         run: cargo test --workspace
 
-  web-and-extension:
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Web check, test and build
+      - name: Check, test and build
         working-directory: web
         run: npm install && npm run check && npm run test && npm run build
-      - name: Extension test and build
+
+  extension:
+    needs: changes
+    if: needs.changes.outputs.extension == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test and build
         working-directory: extension
         run: npm install && npm run test && npm run build
 
   e2e:
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
