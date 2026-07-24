@@ -3,5 +3,7 @@
 web/.svelte-kit/
 web/build/
 extension/dist/
+e2e/test-results/
+e2e/playwright-report/
 .env
 .DS_Store

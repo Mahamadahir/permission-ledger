@@ -52,3 +52,26 @@ jobs:
       - name: Extension test and build
         working-directory: extension
         run: npm install && npm run test && npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Start the stack
+        run: docker compose up -d --build
+      - name: Wait for backend and web
+        run: |
+          for i in $(seq 1 60); do curl -sf http://localhost:3000/health && break; sleep 5; done
+          for i in $(seq 1 60); do curl -sf http://localhost:5173 >/dev/null && break; sleep 5; done
+      - name: Install Playwright
+        working-directory: e2e
+        run: npm install && npx playwright install --with-deps chromium
+      - name: Run end-to-end tests
+        working-directory: e2e
+        run: npm test
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v
