@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   test: {
     environment: 'node',
+    environmentMatchGlobs: [['src/popup/**/*.test.ts', 'jsdom']],
     include: ['src/**/*.test.ts']
   },
   build: {
