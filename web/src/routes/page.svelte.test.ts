@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import Page from './+page.svelte';
-import { bodyOf, fixtures, lastUrl, mockApi, type Routes } from './test-helpers';
+import { bodyOf, fixtures, lastUrl, mockApi, type Routes } from '$lib/test-helpers';
 
 afterEach(() => {
   vi.restoreAllMocks();
