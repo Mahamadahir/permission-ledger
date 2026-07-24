@@ -16,7 +16,9 @@ From the dashboard I can search, filter, review, update, revoke and export every
 
 ## Project status
 
-The Release 1 slice is built and runs locally through Docker Compose. The Rust backend covers authentication, consent records, extension pairing, exports and audit logging. The SvelteKit dashboard covers login, record management, search and filtering, extension devices and exports. The Chrome extension captures consent decisions from the current page. Automated test coverage is still thin and the dashboard is a single page rather than split routes, so this is an early working version rather than a finished release.
+The Release 1 slice is built and runs locally through Docker Compose. The Rust backend covers authentication, consent records, extension pairing, exports and audit logging. The SvelteKit dashboard is split across routes for the dashboard, records, extension pairing, exports and account settings. The Chrome extension captures consent decisions from the current page.
+
+Tests run in CI on every push: 45 backend tests covering authentication, cross-user isolation, extension tokens, exports and concurrency; 40 component and unit tests for the dashboard and extension; and 11 Playwright journeys against the running stack. What remains before Release 1 is finished is deployment, the last phase in the build plan.
 
 Release 2 (privacy policy monitoring, AI-assisted change ranking, SSO and email alerts) and Release 3 (service relationship actions) are not started. The `worker/` and `crates/shared/` crates are scaffolded for the Release 2 monitoring pipeline but empty.
 
