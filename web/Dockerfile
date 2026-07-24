@@ -8,6 +8,9 @@ COPY web ./
 RUN npm run build
 
 FROM nginx:alpine
-COPY web/nginx.conf /etc/nginx/conf.d/default.conf
+# The entrypoint runs envsubst over templates/ at start; the filter keeps it to
+# BACKEND_UPSTREAM so nginx's own $host/$uri/$scheme are left untouched.
+COPY web/nginx.conf.template /etc/nginx/templates/default.conf.template
+ENV NGINX_ENVSUBST_FILTER=BACKEND_UPSTREAM
 COPY --from=build /app/build /usr/share/nginx/html
 EXPOSE 80

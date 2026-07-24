@@ -5,19 +5,22 @@ server {
     index index.html;
 
     # The API is served from this same origin, so session cookies stay
-    # first-party and no CORS preflight is involved.
+    # first-party and no CORS preflight is involved. BACKEND_UPSTREAM is
+    # substituted at container start (envsubst) and includes the scheme, so it
+    # is a plain container in compose and an internal HTTPS FQDN on Azure. Host
+    # is left to default to the upstream host, which the Azure ingress routes on.
     location /api/ {
-        proxy_pass http://backend:3000;
+        proxy_pass ${BACKEND_UPSTREAM};
         proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        proxy_ssl_server_name on;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
     location = /health {
-        proxy_pass http://backend:3000/health;
-        proxy_set_header Host $host;
+        proxy_pass ${BACKEND_UPSTREAM}/health;
+        proxy_ssl_server_name on;
     }
 
     # Client-side routing: unknown paths fall back to the SPA entry point.

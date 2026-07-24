@@ -35,6 +35,8 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
+    environment:
+      BACKEND_UPSTREAM: http://backend:3000
     ports:
       - "${WEB_PORT:-8080}:80"
     depends_on:
