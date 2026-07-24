@@ -59,6 +59,7 @@
 
 <style>
   .metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+  .metrics article { display: grid; gap: 8px; padding: 16px; }
   .metrics span { color: #64748b; font-size: 12px; font-weight: 800; text-transform: uppercase; }
   .metrics strong { font-size: 28px; line-height: 34px; }
 
