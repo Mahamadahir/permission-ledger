@@ -10,7 +10,8 @@
     { label: 'Dashboard', href: '/' },
     { label: 'Records', href: '/records' },
     { label: 'Extension', href: '/extension' },
-    { label: 'Exports', href: '/exports' }
+    { label: 'Exports', href: '/exports' },
+    { label: 'Settings', href: '/settings' }
   ];
 
   $: user = $session.user;

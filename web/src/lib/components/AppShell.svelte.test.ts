@@ -21,7 +21,8 @@ describe('AppShell', () => {
       ['Dashboard', '/'],
       ['Records', '/records'],
       ['Extension', '/extension'],
-      ['Exports', '/exports']
+      ['Exports', '/exports'],
+      ['Settings', '/settings']
     ]) {
       expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
     }
