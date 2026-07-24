@@ -96,11 +96,14 @@ async fn list_devices(
     headers: HeaderMap,
 ) -> ApiResult<Json<Vec<DeviceResponse>>> {
     let (user, _) = auth::require_user(&state.pool, &headers).await?;
+    // Revoked devices are no longer paired: their token is dead and they cannot
+    // be revoked again, so they drop out of the list. The revocation itself
+    // stays in the audit log.
     let rows = sqlx::query_as::<_, DeviceResponse>(
         r#"
         SELECT id, name, last_used_at, revoked_at, created_at
         FROM extension_devices
-        WHERE user_id = $1
+        WHERE user_id = $1 AND revoked_at IS NULL
         ORDER BY created_at DESC
         "#,
     )

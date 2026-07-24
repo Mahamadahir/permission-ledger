@@ -112,6 +112,37 @@ async fn revoking_a_device_twice_is_not_found_the_second_time() {
 }
 
 #[tokio::test]
+async fn revoked_devices_drop_out_of_the_device_list() {
+    let ctx = common::setup().await;
+    let server = ctx.client();
+    let auth = common::register(&server, "listing@example.com", "correcthorse1").await;
+    let (id, _token) = pair(&server, &auth).await;
+
+    let listed = common::cookie_only(server.get("/api/extension/devices"), &auth).await;
+    assert_eq!(listed.json::<Vec<serde_json::Value>>().len(), 1);
+
+    authed(
+        server.delete(&format!("/api/extension/devices/{id}")),
+        &auth,
+    )
+    .await
+    .assert_status_ok();
+
+    let after = common::cookie_only(server.get("/api/extension/devices"), &auth).await;
+    assert_eq!(
+        after.json::<Vec<serde_json::Value>>().len(),
+        0,
+        "a revoked device is no longer paired"
+    );
+    // The device row still exists, it is just filtered from the paired list.
+    let rows: i64 = sqlx::query_scalar("SELECT count(*) FROM extension_devices")
+        .fetch_one(&ctx.pool)
+        .await
+        .unwrap();
+    assert_eq!(rows, 1);
+}
+
+#[tokio::test]
 async fn cookie_routes_reject_a_bearer_only_client() {
     let ctx = common::setup().await;
     let server = ctx.client();

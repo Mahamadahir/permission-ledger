@@ -70,13 +70,16 @@ test('CSV export responds with the header row', async ({ page, request }) => {
   expect(await response.text()).toContain('id,service_name,website_url,category');
 });
 
-test('pair an extension device shows a token and lists the device', async ({ page }) => {
+test('pair an extension device, then revoke it', async ({ page }) => {
   await register(page, uniqueEmail());
   await page.getByLabel('Device name').fill('Work laptop');
   await page.getByRole('button', { name: 'Pair extension' }).click();
 
   await expect(page.locator('.token-box code')).toBeVisible();
   await expect(page.locator('.device-list')).toContainText('Work laptop');
+
+  await page.getByRole('button', { name: 'Revoke' }).click();
+  await expect(page.getByText('No paired devices.')).toBeVisible();
 });
 
 test('log out returns to the auth screen', async ({ page }) => {

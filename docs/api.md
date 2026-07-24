@@ -26,7 +26,7 @@ Services are shared by normalized domain; consent records remain private to the 
 ## Extension
 
 - `POST /api/extension/pair` creates a paired device and returns the raw token once.
-- `GET /api/extension/devices` lists paired devices.
+- `GET /api/extension/devices` lists currently paired devices. Revoked devices are excluded; the revocation stays in the audit log.
 - `DELETE /api/extension/devices/:id` revokes a device.
 - `POST /api/extension/records` creates a record with `Authorization: Bearer <device-token>`.
 
