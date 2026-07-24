@@ -6,8 +6,8 @@ function uniqueEmail() {
 
 async function register(page: Page, email: string) {
   await page.goto('/');
-  // Wait for hydration (loadSession fires fetch on mount) so the tab click isn't
-  // lost against the server-rendered, not-yet-interactive markup.
+  // Wait for the client app to boot (loadSession fires on mount) so the tab
+  // click isn't lost against not-yet-interactive markup.
   await page.waitForLoadState('networkidle');
   await expect(async () => {
     await page.getByRole('button', { name: 'Register' }).click();
@@ -25,7 +25,12 @@ function authSubmit(page: Page) {
   return page.locator('.auth-panel button.primary').click();
 }
 
+function goTo(page: Page, name: string) {
+  return page.getByRole('link', { name, exact: true }).click();
+}
+
 async function addRecord(page: Page, service: string) {
+  await goTo(page, 'Records');
   await page.getByRole('button', { name: 'Add record' }).first().click();
   await page.getByLabel('Service name').fill(service);
   await page.getByLabel('Website URL').fill('https://acme.example');
@@ -33,6 +38,31 @@ async function addRecord(page: Page, service: string) {
   await page.getByRole('button', { name: 'Save record' }).click();
   await expect(page.getByText('Record saved')).toBeVisible();
 }
+
+test('every nav destination renders its own page', async ({ page }) => {
+  await register(page, uniqueEmail());
+
+  await expect(page.getByRole('heading', { name: 'Privacy permissions' })).toBeVisible();
+
+  await goTo(page, 'Records');
+  await expect(page).toHaveURL(/\/records$/);
+  await expect(page.getByRole('heading', { name: 'Consent records' }).first()).toBeVisible();
+
+  await goTo(page, 'Extension');
+  await expect(page).toHaveURL(/\/extension$/);
+  await expect(page.getByRole('heading', { name: 'Browser extension' })).toBeVisible();
+
+  await goTo(page, 'Exports');
+  await expect(page).toHaveURL(/\/exports$/);
+  await expect(page.getByRole('heading', { name: 'Download your data' })).toBeVisible();
+
+  await goTo(page, 'Settings');
+  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible();
+
+  await goTo(page, 'Dashboard');
+  await expect(page.getByRole('heading', { name: 'Privacy permissions' })).toBeVisible();
+});
 
 test('register, then reload keeps the session', async ({ page }) => {
   const email = uniqueEmail();
@@ -44,6 +74,25 @@ test('register, then reload keeps the session', async ({ page }) => {
   await page.waitForLoadState('networkidle');
   // Session cookie round-trips, so the dashboard shows without re-login.
   await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible();
+});
+
+test('a deep link survives logging in', async ({ page }) => {
+  const email = uniqueEmail();
+  await register(page, email);
+  await page.getByRole('button', { name: 'Log out' }).click();
+
+  // Land on a protected route while signed out, log in, stay on that route.
+  await page.goto('/extension');
+  await page.waitForLoadState('networkidle');
+  await expect(page.getByRole('heading', { name: /Privacy decisions/ })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Login' }).first().click();
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill('correcthorse1');
+  await authSubmit(page);
+
+  await expect(page).toHaveURL(/\/extension$/);
+  await expect(page.getByRole('heading', { name: 'Browser extension' })).toBeVisible();
 });
 
 test('add a record through the modal and see it in the table', async ({ page }) => {
@@ -63,8 +112,18 @@ test('revoke a record flips its status', async ({ page }) => {
   await expect(page.getByRole('row', { name: /Acme Analytics/ }).getByText('revoked')).toBeVisible();
 });
 
-test('CSV export responds with the header row', async ({ page, request }) => {
+test('a saved record shows on the dashboard', async ({ page }) => {
   await register(page, uniqueEmail());
+  await addRecord(page, 'Acme Analytics');
+
+  await goTo(page, 'Dashboard');
+  await expect(page.getByText('Acme Analytics')).toBeVisible();
+});
+
+test('CSV export responds with the header row', async ({ page }) => {
+  await register(page, uniqueEmail());
+  await goTo(page, 'Exports');
+
   const response = await page.request.get('http://localhost:3000/api/export.csv');
   expect(response.status()).toBe(200);
   expect(await response.text()).toContain('id,service_name,website_url,category');
@@ -72,6 +131,8 @@ test('CSV export responds with the header row', async ({ page, request }) => {
 
 test('pair an extension device, then revoke it', async ({ page }) => {
   await register(page, uniqueEmail());
+  await goTo(page, 'Extension');
+
   await page.getByLabel('Device name').fill('Work laptop');
   await page.getByRole('button', { name: 'Pair extension' }).click();
 
@@ -80,6 +141,19 @@ test('pair an extension device, then revoke it', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Revoke' }).click();
   await expect(page.getByText('No paired devices.')).toBeVisible();
+});
+
+test('settings round-trip a change', async ({ page }) => {
+  await register(page, uniqueEmail());
+  await goTo(page, 'Settings');
+
+  await page.getByLabel('Display name').fill('Sam Dahir');
+  await page.getByRole('button', { name: 'Save settings' }).click();
+  await expect(page.getByText('Settings saved')).toBeVisible();
+
+  await page.reload();
+  await page.waitForLoadState('networkidle');
+  await expect(page.getByLabel('Display name')).toHaveValue('Sam Dahir');
 });
 
 test('log out returns to the auth screen', async ({ page }) => {

@@ -6,8 +6,10 @@ import { defineConfig, devices } from '@playwright/test';
 // cookie/CSRF flow gets exercised.
 export default defineConfig({
   testDir: '.',
-  timeout: 30_000,
-  expect: { timeout: 10_000 },
+  timeout: 45_000,
+  // The dev server compiles each route chunk on first visit, so the first
+  // navigation to a page can be slow even though the app is healthy.
+  expect: { timeout: 15_000 },
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'list' : 'line',
