@@ -18,7 +18,11 @@ From the dashboard I can search, filter, review, update, revoke and export every
 
 The Release 1 slice is built and runs locally through Docker Compose. The Rust backend covers authentication, consent records, extension pairing, exports and audit logging. The SvelteKit dashboard is split across routes for the dashboard, records, extension pairing, exports and account settings. The Chrome extension captures consent decisions from the current page.
 
-Tests run in CI on every push: 45 backend tests covering authentication, cross-user isolation, extension tokens, exports and concurrency; 40 component and unit tests for the dashboard and extension; and 11 Playwright journeys against the running stack. What remains before Release 1 is finished is deployment, the last phase in the build plan.
+Tests run in CI on every push: 45 backend tests covering authentication, cross-user isolation, extension tokens, exports and concurrency; 40 component and unit tests for the dashboard and extension; and 11 Playwright journeys run against both the development stack and the production one.
+
+![The dashboard](./docs/images/dashboard.png)
+
+![Consent records with filters](./docs/images/records.png)
 
 Release 2 (privacy policy monitoring, AI-assisted change ranking, SSO and email alerts) and Release 3 (service relationship actions) are not started. The `worker/` and `crates/shared/` crates are scaffolded for the Release 2 monitoring pipeline but empty.
 
@@ -31,7 +35,7 @@ Backend: Rust, Axum, Tokio, SQLx
 Database: PostgreSQL
 Authentication: secure cookie sessions for the web app, paired tokens for the extension
 Password hashing: Argon2id
-Frontend: SvelteKit, TypeScript, Tailwind CSS
+Frontend: SvelteKit, TypeScript, hand-written CSS
 Browser extension: Chrome Manifest V3, TypeScript, Svelte popup
 DevOps: Docker, Docker Compose, GitHub Actions
 ```
@@ -46,7 +50,7 @@ A few notes on choices that aren't obvious from the list:
 
 **"AI-assisted" means an API call, not a model running inside Rust, and it only runs on confirmed changes.** A check first compares a hash of the extracted policy text against the last snapshot. Only when that hash has changed does the backend send the original and updated text to an LLM provider, with a system prompt asking it to identify what changed and categorise each change by type and risk level. The model never runs in-process, and it never runs on a check that found no change.
 
-**SQLx checks queries against a real database at compile time.** This means local development and CI both need a running PostgreSQL instance with migrations applied before the backend will build. The Docker Compose setup handles this.
+**SQLx queries are checked at runtime, not compile time.** The backend uses the runtime query API rather than the `query!` macros, so it builds without a database. PostgreSQL is only needed to run it and to run the tests, each of which creates its own throwaway database.
 
 ## Architecture
 
@@ -77,7 +81,9 @@ permission-ledger/
 ├── DOMAIN_MODEL.md
 ├── Cargo.toml
 ├── docker-compose.yml
+├── docker-compose.prod.yml
 ├── .env.example
+├── .env.prod.example
 ├── .github/
 │   └── workflows/
 │       └── ci.yml
@@ -97,6 +103,7 @@ permission-ledger/
 ├── web/
 │   ├── package.json
 │   ├── svelte.config.js
+│   ├── nginx.conf
 │   ├── src/
 │   └── static/
 ├── extension/
@@ -117,10 +124,15 @@ permission-ledger/
 │       ├── Cargo.toml
 │       └── src/
 │           └── lib.rs
+├── e2e/
+│   └── dashboard.spec.ts
+├── scripts/
+│   └── seed.mjs
 └── docs/
     ├── api.md
     ├── deployment.md
-    └── security.md
+    ├── security.md
+    └── images/
 ```
 
 ## Running locally
@@ -136,7 +148,20 @@ The backend listens on `http://localhost:3000` and applies SQLx migrations at st
 
 Configuration comes from environment variables, documented in `.env.example`: `DATABASE_URL`, `BACKEND_BIND_ADDR`, `WEB_ORIGIN`, `COOKIE_SECURE` and `VITE_API_BASE`. The API surface is documented in [docs/api.md](./docs/api.md), deployment in [docs/deployment.md](./docs/deployment.md) and the security model in [docs/security.md](./docs/security.md).
 
-Production is intended to run on Azure once Release 1 is deployable, though the Docker and GitHub Actions setup keeps that target open.
+To fill the dashboard with demo data, run `node scripts/seed.mjs http://localhost:5173`.
+
+## Deploying
+
+The dashboard builds to static files served by nginx, which proxies `/api` to the backend so both share one origin. That keeps the session cookie first-party and removes CORS entirely; the same proxy runs in development, so the two behave alike.
+
+Run the production stack locally before deploying it:
+
+```bash
+cp .env.prod.example .env
+docker compose -f docker-compose.prod.yml up --build
+```
+
+The dashboard is then on `http://localhost:8080` and is the only exposed service. Full deployment steps, environment variables, migration behaviour and the Azure Container Apps notes are in [docs/deployment.md](./docs/deployment.md).
 
 ## Security
 
