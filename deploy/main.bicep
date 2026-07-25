@@ -22,8 +22,11 @@ param databaseUrl string
 @description('Prefix for resource names.')
 param namePrefix string = 'permission-ledger'
 
-var backendImage = 'ghcr.io/${ghcrOwner}/permission-ledger-backend:${imageTag}'
-var webImage = 'ghcr.io/${ghcrOwner}/permission-ledger-web:${imageTag}'
+// Container image references must be lowercase, but GitHub usernames are
+// case-preserving, so normalise rather than relying on how it was typed.
+var owner = toLower(ghcrOwner)
+var backendImage = 'ghcr.io/${owner}/permission-ledger-backend:${imageTag}'
+var webImage = 'ghcr.io/${owner}/permission-ledger-web:${imageTag}'
 
 resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: '${namePrefix}-logs'
