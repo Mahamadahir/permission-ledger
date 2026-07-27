@@ -15,6 +15,7 @@ use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use sqlx::{FromRow, PgPool};
+use std::sync::OnceLock;
 use uuid::Uuid;
 
 use crate::{
@@ -212,6 +213,10 @@ async fn login(
     .await?;
 
     let Some(user) = user else {
+        // Verify against a throwaway hash so an unknown address costs the same
+        // time as a wrong password; otherwise the response time reveals which
+        // addresses have accounts.
+        let _ = verify_password(&payload.password, dummy_password_hash());
         record_failed_login(&state.pool, &email).await?;
         return Err(ApiError::Unauthorized);
     };
@@ -386,6 +391,16 @@ fn hash_password(password: &str) -> ApiResult<String> {
         .hash_password(password.as_bytes(), &salt)
         .map(|hash| hash.to_string())
         .map_err(|_| ApiError::Internal)
+}
+
+/// An Argon2 hash of a value nobody can log in with, used to keep the timing of
+/// a failed login the same whether or not the address exists. Built once with
+/// the same parameters as a real hash so the work matches.
+fn dummy_password_hash() -> &'static str {
+    static HASH: OnceLock<String> = OnceLock::new();
+    HASH.get_or_init(|| {
+        hash_password(&random_token()).expect("hash the timing-equalising password")
+    })
 }
 
 fn verify_password(password: &str, password_hash: &str) -> ApiResult<bool> {
