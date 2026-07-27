@@ -22,6 +22,9 @@ param databaseUrl string
 @description('Prefix for resource names.')
 param namePrefix string = 'permission-ledger'
 
+@description('Address to email when an alert fires. Leave empty to skip alerting.')
+param alertEmail string = ''
+
 // Container image references must be lowercase, but GitHub usernames are
 // case-preserving, so normalise rather than relying on how it was typed.
 var owner = toLower(ghcrOwner)
@@ -124,6 +127,91 @@ resource web 'Microsoft.App/containerApps@2024-03-01' = {
       ]
       scale: { minReplicas: 0, maxReplicas: 3 }
     }
+  }
+}
+
+// Alerting is only wired up when an address is supplied, so the stack can be
+// deployed without it.
+var alertsEnabled = !empty(alertEmail)
+
+resource alertGroup 'Microsoft.Insights/actionGroups@2023-01-01' = if (alertsEnabled) {
+  name: '${namePrefix}-alerts'
+  location: 'global'
+  properties: {
+    groupShortName: 'plalerts'
+    enabled: true
+    emailReceivers: [
+      {
+        name: 'owner'
+        emailAddress: alertEmail
+        useCommonAlertSchema: true
+      }
+    ]
+  }
+}
+
+// Server errors: the app is up but failing requests.
+resource serverErrorAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = if (alertsEnabled) {
+  name: '${namePrefix}-backend-5xx'
+  location: 'global'
+  properties: {
+    description: 'The backend returned server errors in the last 5 minutes.'
+    severity: 1
+    enabled: true
+    scopes: [backend.id]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT5M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          name: 'ServerErrors'
+          metricNamespace: 'Microsoft.App/containerApps'
+          metricName: 'Requests'
+          operator: 'GreaterThan'
+          threshold: 0
+          timeAggregation: 'Total'
+          criterionType: 'StaticThresholdCriterion'
+          dimensions: [
+            {
+              name: 'statusCodeCategory'
+              operator: 'Include'
+              values: ['5xx']
+            }
+          ]
+        }
+      ]
+    }
+    actions: [{ actionGroupId: alertGroup.id }]
+  }
+}
+
+// Restarts: a crash loop, most likely a bad migration or an unreachable database.
+resource restartAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = if (alertsEnabled) {
+  name: '${namePrefix}-backend-restarts'
+  location: 'global'
+  properties: {
+    description: 'The backend container restarted, which usually means it cannot start cleanly.'
+    severity: 1
+    enabled: true
+    scopes: [backend.id]
+    evaluationFrequency: 'PT5M'
+    windowSize: 'PT15M'
+    criteria: {
+      'odata.type': 'Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria'
+      allOf: [
+        {
+          name: 'Restarts'
+          metricNamespace: 'Microsoft.App/containerApps'
+          metricName: 'RestartCount'
+          operator: 'GreaterThan'
+          threshold: 2
+          timeAggregation: 'Maximum'
+          criterionType: 'StaticThresholdCriterion'
+        }
+      ]
+    }
+    actions: [{ actionGroupId: alertGroup.id }]
   }
 }
 

@@ -127,6 +127,7 @@ az deployment group create \
   --resource-group permission-ledger \
   --template-file deploy/main.bicep \
   --parameters ghcrOwner=<owner> imageTag=v1.0.0 \
+  --parameters alertEmail=you@example.com \
   --parameters databaseUrl='postgres://…?sslmode=require'
 ```
 
@@ -157,6 +158,17 @@ Populate a demo account with `node scripts/seed.mjs <webUrl>`.
 
 Push a new tag, then re-run the deployment with the new `imageTag`. Only the two
 container images change; the environment and Neon stay put.
+
+### Alerting
+
+Passing `alertEmail` creates an action group and two metric alerts on the
+backend: one when it returns any 5xx over five minutes, and one when the
+container restarts repeatedly, which usually means it cannot start cleanly (a
+bad migration, or the database being unreachable). Omit the parameter and no
+alerting resources are created.
+
+Azure sends a confirmation email to the address the first time the action group
+is created; the alerts do not fire until it is confirmed.
 
 ### Notes
 
