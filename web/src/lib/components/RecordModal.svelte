@@ -25,7 +25,7 @@
       <label>Service name<input bind:value={form.service_name} /></label>
       <label>Website URL<input bind:value={form.website_url} placeholder="https://example.com" /></label>
       <label>Category<select bind:value={form.category_id}>{#each categories as category}<option value={category.id}>{category.name}</option>{/each}</select></label>
-      <label>Consent type<input bind:value={form.consent_type} /></label>
+      <label>Consent type<input bind:value={form.consent_type} placeholder="Marketing emails, analytics cookies" /></label>
       <label>Date given<input bind:value={form.date_given} type="date" /></label>
       <label>Review date<input bind:value={form.review_date} type="date" /></label>
       <label>Expiry date<input bind:value={form.expiry_date} type="date" /></label>
